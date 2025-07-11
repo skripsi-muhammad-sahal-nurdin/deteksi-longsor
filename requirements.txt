@@ -1,0 +1,11 @@
+Flask
+Flask-Cors
+tensorflow
+h5py
+scipy
+numpy
+matplotlib
+gunicorn 
+google-cloud-firestore
+python-dotenv
+google-cloud-storage 

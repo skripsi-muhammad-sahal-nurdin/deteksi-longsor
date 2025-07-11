@@ -1,0 +1,37 @@
+# Virtual Environment
+# Folder ini spesifik untuk mesin Anda dan bisa dibuat ulang dari requirements.txt
+venv/
+.venv/
+env/
+
+# Python bytecode
+# File-file ini dibuat otomatis oleh Python untuk mempercepat eksekusi
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Sensitive Information
+# JANGAN PERNAH meng-upload file-file ini ke GitHub!
+.env
+service-account-key.json
+
+# Temporary Application Data
+# Folder-folder ini berisi file yang di-upload pengguna atau hasil yang dibuat aplikasi
+uploads/
+results/
+
+# Large Model Files
+# File model Anda sangat besar dan sudah disimpan di Google Cloud Storage
+*.keras
+*.h5
+
+# IDE / Editor config
+# Pengaturan spesifik untuk editor kode Anda
+.vscode/
+.idea/
+
+# OS-specific files
+# File sistem operasi yang tidak relevan dengan kode
+.DS_Store
+Thumbs.db

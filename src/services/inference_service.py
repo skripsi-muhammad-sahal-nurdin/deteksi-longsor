@@ -1,6 +1,6 @@
 import h5py
 import numpy as np
-from scipy.ndimage import label, binary_opening # <-- Pastikan binary_opening di-import
+from scipy.ndimage import label, binary_opening # Pastikan binary_opening di-import
 
 # --- FUNGSI-FUNGSI ANALISIS (SAMA SEPERTI DI NOTEBOOK) ---
 
@@ -22,29 +22,52 @@ def analyze_landslide_mask(prediction_mask, pixel_area_sqm=100.0):
         })
     return analysis_result, labeled_mask
 
-# --- TAMBAHAN: FUNGSI filter_predictions YANG SEBELUMNYA HILANG ---
+# --- [PERBAIKAN] FUNGSI filter_predictions SEKARANG LENGKAP ---
 def filter_predictions(stats_dict, labeled_mask, min_area_sqm):
-    """Menyaring deteksi longsor berdasarkan luas minimum."""
+    """Menyaring deteksi longsor dan merekonstruksi mask yang bersih."""
+    # Saring daftar 'landslides_details'
     filtered_details = [
         detail for detail in stats_dict['landslides_details'] 
         if detail['area_in_sqm'] >= min_area_sqm
     ]
     
+    # Jika tidak ada yang tersisa setelah disaring
     if not filtered_details:
-        return {'total_landslides': 0, 'landslides_details': []}
+        return {'total_landslides': 0, 'landslides_details': []}, np.zeros_like(labeled_mask)
 
+    # Buat mask baru yang bersih (awalnya semua hitam/0)
+    clean_mask = np.zeros_like(labeled_mask, dtype=np.uint8)
+    
+    # Dapatkan ID dari longsor yang lolos saringan
+    valid_ids = {detail['id'] for detail in filtered_details}
+
+    # "Gambar ulang" hanya longsor yang valid ke mask yang bersih
+    for i in valid_ids:
+        clean_mask[labeled_mask == i] = 1
+
+    # Buat dictionary hasil akhir yang sudah bersih
     final_stats = {
         'total_landslides': len(filtered_details),
         'landslides_details': filtered_details
     }
     
-    return final_stats
+    # Kembalikan statistik DAN mask yang sudah bersih
+    return final_stats, clean_mask
 
 # --- FUNGSI UTAMA UNTUK INFERENSI (SUDAH DIMODIFIKASI) ---
 
 def preprocess_and_predict(model, file_path):
     """Melakukan preprocessing, prediksi, dan analisis lengkap dengan post-processing."""
-    # 1. Preprocessing (Tidak ada perubahan di bagian ini)
+    
+    # =================================================================
+    # [PERBAIKAN] Definisikan best_threshold di sini sebagai konstanta.
+    # Nilai ini diambil dari hasil analisis pada data validasi di notebook.
+    # Ganti angka ini jika mendapatkan nilai threshold baru dari eksperimen.
+    # =================================================================
+    BEST_THRESHOLD = 0.3519 
+    # =================================================================
+    
+    # 1. Preprocessing (Tidak ada perubahan)
     with h5py.File(file_path, 'r') as hdf:
         data = np.array(hdf.get('img'))
     
@@ -70,18 +93,14 @@ def preprocess_and_predict(model, file_path):
     
     original_rgb = data[:, :, 3:0:-1]
 
-    # 2. Prediksi (Tidak ada perubahan di bagian ini)
+    # 2. Prediksi
     input_batch = np.expand_dims(processed_data, axis=0)
     pred_mask = model.predict(input_batch)[0]
-    # pred_mask_binary = (pred_mask > 0.5).astype(np.uint8)[:, :, 0]
-    # Best Thresholds
-    pred_mask_binary = (pred_mask > 0.3519).astype(np.uint8)[:, :, 0]
     
+    # [PERBAIKAN] Gunakan konstanta yang sudah didefinisikan
+    pred_mask_binary = (pred_mask > BEST_THRESHOLD).astype(np.uint8)[:, :, 0]
     
-    # =================================================================
-    # 3. Post-Processing dan Analisis (BAGIAN YANG DIPERBARUI)
-    # =================================================================
-    # Definisikan parameter post-processing
+    # 3. Post-Processing dan Analisis
     structure = np.ones((2, 2))
     MINIMUM_AREA_SQM = 100
     
@@ -92,7 +111,8 @@ def preprocess_and_predict(model, file_path):
     raw_stats, labeled_mask = analyze_landslide_mask(cleaned_mask)
     
     # Langkah 3.3: Saring hasil berdasarkan luas minimum
-    final_landslide_stats = filter_predictions(raw_stats, labeled_mask, min_area_sqm=MINIMUM_AREA_SQM)
-    # =================================================================
+    # [PERBAIKAN] Tangkap kedua output: statistik DAN mask final
+    final_landslide_stats, final_mask = filter_predictions(raw_stats, labeled_mask, min_area_sqm=MINIMUM_AREA_SQM)
     
-    return original_rgb, pred_mask_binary, final_landslide_stats
+    # [PERBAIKAN] Kembalikan mask FINAL yang sudah bersih dan tersaring
+    return original_rgb, final_mask, final_landslide_stats

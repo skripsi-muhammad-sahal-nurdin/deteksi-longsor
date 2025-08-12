@@ -73,7 +73,10 @@ def preprocess_and_predict(model, file_path):
     # 2. Prediksi (Tidak ada perubahan di bagian ini)
     input_batch = np.expand_dims(processed_data, axis=0)
     pred_mask = model.predict(input_batch)[0]
-    pred_mask_binary = (pred_mask > 0.5).astype(np.uint8)[:, :, 0]
+    # pred_mask_binary = (pred_mask > 0.5).astype(np.uint8)[:, :, 0]
+    # Best Thresholds
+    pred_mask_binary = (pred_mask > 0.3519).astype(np.uint8)[:, :, 0]
+    
     
     # =================================================================
     # 3. Post-Processing dan Analisis (BAGIAN YANG DIPERBARUI)
